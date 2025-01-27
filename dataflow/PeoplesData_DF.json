@@ -1,0 +1,143 @@
+{
+	"name": "PeoplesData_DF",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"linkedService": {
+						"referenceName": "Runn_APIs",
+						"type": "LinkedServiceReference"
+					},
+					"name": "SourcePeoples"
+				},
+				{
+					"dataset": {
+						"referenceName": "PeoplesDestination",
+						"type": "DatasetReference"
+					},
+					"name": "DestinationPeoples"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "PeoplesDestination",
+						"type": "DatasetReference"
+					},
+					"name": "PeoplesDestination"
+				}
+			],
+			"transformations": [
+				{
+					"name": "SourcePeoplesFlatten"
+				},
+				{
+					"name": "SourcePeoplesCast"
+				},
+				{
+					"name": "SourcePeoplesJoinDestinationPeoples"
+				},
+				{
+					"name": "IncrementalLoad"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     LastProcessedTimestamp_Parameter_DF as string",
+				"}",
+				"source(output(",
+				"          body as (nextCursor as string, values as (createdAt as string, email as string, firstName as string, holidaysGroupId as integer, id as integer, isArchived as string, lastName as string, references as string[], tags as (id as integer, name as string)[], updatedAt as string)[]),",
+				"          headers as [string,string]",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'rest',",
+				"     timeout: 30,",
+				"     requestInterval: 0,",
+				"     httpMethod: 'GET',",
+				"     paginationRules: ['supportRFC5988' -> 'true'],",
+				"     responseFormat: ['type' -> 'json', 'documentForm' -> 'documentPerLine']) ~> SourcePeoples",
+				"source(output(",
+				"          Id as integer,",
+				"          FirstName as string,",
+				"          LastName as string,",
+				"          Email as string,",
+				"          isArchived as string,",
+				"          References as string,",
+				"          Tag_Id as integer,",
+				"          Tag_Name as string,",
+				"          HolidaysGroupId as integer,",
+				"          CreatedAt as timestamp,",
+				"          UpdatedAt as timestamp",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> DestinationPeoples",
+				"SourcePeoples foldDown(unrollMultiple(body.values,body.values.references,body.values.tags),",
+				"     mapColumn(",
+				"          Id = body.values.id,",
+				"          FirstName = body.values.firstName,",
+				"          LastName = body.values.lastName,",
+				"          Email = body.values.email,",
+				"          isArchived = body.values.isArchived,",
+				"          References = body.values.references,",
+				"          Tag_Id = body.values.tags.id,",
+				"          Tag_Name = body.values.tags.name,",
+				"          HolidaysGroupId = body.values.holidaysGroupId,",
+				"          CreatedAt = body.values.createdAt,",
+				"          UpdatedAt = body.values.updatedAt",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> SourcePeoplesFlatten",
+				"SourcePeoplesFlatten cast(output(",
+				"          CreatedAt as timestamp 'yyyy-MM-dd\\'T\\'HH:mm:ss.SSS\\'Z\\'',",
+				"          UpdatedAt as timestamp 'yyyy-MM-dd\\'T\\'HH:mm:ss.SSS\\'Z\\''",
+				"     ),",
+				"     errors: true) ~> SourcePeoplesCast",
+				"SourcePeoplesCast, DestinationPeoples join(SourcePeoplesFlatten@Id == DestinationPeoples@Id,",
+				"     joinType:'left',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> SourcePeoplesJoinDestinationPeoples",
+				"SourcePeoplesJoinDestinationPeoples alterRow(upsertIf(isNull(DestinationPeoples@Id)||!isNull(DestinationPeoples@Id)&&(SourcePeoplesCast@UpdatedAt>toTimestamp($LastProcessedTimestamp_Parameter_DF)))) ~> IncrementalLoad",
+				"IncrementalLoad sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     deletable:false,",
+				"     insertable:false,",
+				"     updateable:false,",
+				"     upsertable:true,",
+				"     keys:['Id'],",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError',",
+				"     mapColumn(",
+				"          Id = SourcePeoplesFlatten@Id,",
+				"          FirstName = SourcePeoplesFlatten@FirstName,",
+				"          LastName = SourcePeoplesFlatten@LastName,",
+				"          Email = SourcePeoplesFlatten@Email,",
+				"          isArchived = SourcePeoplesFlatten@isArchived,",
+				"          References = SourcePeoplesFlatten@References,",
+				"          Tag_Id = SourcePeoplesFlatten@Tag_Id,",
+				"          Tag_Name = SourcePeoplesFlatten@Tag_Name,",
+				"          HolidaysGroupId = SourcePeoplesFlatten@HolidaysGroupId,",
+				"          CreatedAt = SourcePeoplesCast@CreatedAt,",
+				"          UpdatedAt = SourcePeoplesCast@UpdatedAt,",
+				"          Id = DestinationPeoples@Id,",
+				"          FirstName = DestinationPeoples@FirstName,",
+				"          LastName = DestinationPeoples@LastName,",
+				"          Email = DestinationPeoples@Email,",
+				"          isArchived = DestinationPeoples@isArchived,",
+				"          References = DestinationPeoples@References,",
+				"          Tag_Id = DestinationPeoples@Tag_Id,",
+				"          Tag_Name = DestinationPeoples@Tag_Name,",
+				"          HolidaysGroupId = DestinationPeoples@HolidaysGroupId,",
+				"          CreatedAt = DestinationPeoples@CreatedAt,",
+				"          UpdatedAt = DestinationPeoples@UpdatedAt",
+				"     )) ~> PeoplesDestination"
+			]
+		}
+	}
+}

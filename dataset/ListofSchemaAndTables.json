@@ -1,0 +1,13 @@
+{
+	"name": "ListofSchemaAndTables",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "GettingSQLTables",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

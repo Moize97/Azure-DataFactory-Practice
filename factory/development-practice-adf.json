@@ -1,0 +1,9 @@
+{
+	"name": "development-practice-adf",
+	"location": "centralindia",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "ec36bf88-5dc4-4e88-8381-7f56cb8590e4",
+		"tenantId": "026e0585-0f6d-4eb2-ba93-8c4a4d4883c4"
+	}
+}

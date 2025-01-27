@@ -1,0 +1,178 @@
+{
+	"name": "IncrementalLoadBy_AlterRows",
+	"properties": {
+		"activities": [
+			{
+				"name": "Watermark_MaximumDate",
+				"type": "Lookup",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "Select Id, TableName, LastProcessedTimestamp From Watermark\n\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "AzureSqlTable1",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "IncrementalLoad",
+				"type": "ExecuteDataFlow",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
+				"dependsOn": [
+					{
+						"activity": "Watermark_MaximumDate",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataflow": {
+						"referenceName": "IncrementalLoad_DS",
+						"type": "DataFlowReference",
+						"parameters": {
+							"LastProcessedTimestamp_Parameter_DF": {
+								"value": "'@{replace(substring(activity('Watermark_MaximumDate').output.value[0].LastProcessedTimestamp, 0, 19), 'T', ' ')}'",
+								"type": "Expression"
+							}
+						}
+					},
+					"compute": {
+						"coreCount": 8,
+						"computeType": "General"
+					},
+					"traceLevel": "Fine"
+				}
+			},
+			{
+				"name": "RunnWatmer",
+				"description": "PassLastProccedDate",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "Select Id, TableName, Table_Url, LastProcessedTimestamp from Runn_watermark",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "Runn_Watermark_DS",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "PeoplesData",
+				"type": "ExecuteDataFlow",
+				"dependsOn": [
+					{
+						"activity": "RunnWatmer",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataflow": {
+						"referenceName": "PeoplesData_DF",
+						"type": "DataFlowReference",
+						"parameters": {
+							"LastProcessedTimestamp_Parameter_DF": {
+								"value": "'@{replace(substring(activity('RunnWatmer').output.value[0].LastProcessedTimestamp, 0, 19), 'T', ' ')}'",
+								"type": "Expression"
+							}
+						},
+						"linkedServiceParameters": {
+							"SourcePeoples": {
+								"linkedService": {
+									"Peoples_API": {
+										"value": "@activity('RunnWatmer').output.value[0].Table_Url",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					},
+					"compute": {
+						"coreCount": 8,
+						"computeType": "General"
+					},
+					"traceLevel": "Fine"
+				}
+			},
+			{
+				"name": "UpdateWaterMarkLastDateTime_SP",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "PeoplesData",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[UpdateWatermarkTimestamps]"
+				},
+				"linkedServiceName": {
+					"referenceName": "SQLTM38DatabaseServer_LS",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"annotations": [],
+		"lastPublishTime": "2025-01-23T07:23:07Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

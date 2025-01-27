@@ -1,0 +1,32 @@
+{
+	"name": "Runn_Watermark_DS",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "SQLTM38DatabaseServer_LS",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "id",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "TableName",
+				"type": "varchar"
+			},
+			{
+				"name": "LastProcessedTimestamp",
+				"type": "datetime2",
+				"scale": 7
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "Runn_Watermark"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

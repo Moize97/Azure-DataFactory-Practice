@@ -1,0 +1,95 @@
+{
+	"name": "IncrementalLoad_DS",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "SourceTransactions",
+						"type": "DatasetReference"
+					},
+					"name": "SourceTransactionsTable"
+				},
+				{
+					"dataset": {
+						"referenceName": "DestinationTransactions",
+						"type": "DatasetReference"
+					},
+					"name": "DestinationTranscationAfterSink"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "DestinationTransactions",
+						"type": "DatasetReference"
+					},
+					"name": "DestinationTransactions"
+				}
+			],
+			"transformations": [
+				{
+					"name": "SourceTransactionsJoinDestinationTransactions"
+				},
+				{
+					"name": "InsertNewRowsUpdateExsistingRows"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     LastProcessedTimestamp_Parameter_DF as string",
+				"}",
+				"source(output(",
+				"          TransactionID as integer,",
+				"          TransactionAmount as decimal(18,2),",
+				"          CustomerID as integer,",
+				"          ModifiedTimestamp as timestamp",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> SourceTransactionsTable",
+				"source(output(",
+				"          TransactionID as integer,",
+				"          TransactionAmount as decimal(18,2),",
+				"          CustomerID as integer,",
+				"          ModifiedTimestamp as timestamp",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> DestinationTranscationAfterSink",
+				"SourceTransactionsTable, DestinationTranscationAfterSink join(SourceTransactionsTable@TransactionID == DestinationTranscationAfterSink@TransactionID,",
+				"     joinType:'left',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> SourceTransactionsJoinDestinationTransactions",
+				"SourceTransactionsJoinDestinationTransactions alterRow(upsertIf(isNull(DestinationTranscationAfterSink@TransactionID)||!isNull(DestinationTranscationAfterSink@TransactionID)&&(SourceTransactionsTable@TransactionAmount!=DestinationTranscationAfterSink@TransactionAmount||SourceTransactionsTable@ModifiedTimestamp!=DestinationTranscationAfterSink@ModifiedTimestamp))) ~> InsertNewRowsUpdateExsistingRows",
+				"InsertNewRowsUpdateExsistingRows sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          TransactionID as integer,",
+				"          TransactionAmount as decimal(18,2),",
+				"          CustomerID as integer,",
+				"          ModifiedTimestamp as timestamp",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:false,",
+				"     updateable:false,",
+				"     upsertable:true,",
+				"     keys:['TransactionID'],",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError',",
+				"     mapColumn(",
+				"          TransactionID = SourceTransactionsTable@TransactionID,",
+				"          TransactionAmount = SourceTransactionsTable@TransactionAmount,",
+				"          CustomerID = SourceTransactionsTable@CustomerID,",
+				"          ModifiedTimestamp = SourceTransactionsTable@ModifiedTimestamp",
+				"     )) ~> DestinationTransactions"
+			]
+		}
+	}
+}

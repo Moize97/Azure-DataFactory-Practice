@@ -1,0 +1,17 @@
+{
+	"name": "PeoplesDestination",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "SQLTM38DatabaseServer_LS",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "Peoples"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

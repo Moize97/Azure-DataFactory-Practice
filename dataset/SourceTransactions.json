@@ -1,0 +1,17 @@
+{
+	"name": "SourceTransactions",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "SQLTM38DatabaseServer_LS",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "SourceTransactions"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}
